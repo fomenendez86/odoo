@@ -17,6 +17,7 @@ from odoo.addons.base.models.ir_qweb import QWebException, render
 from odoo.tools import misc, mute_logger
 from odoo.tools.json import scriptsafe as json_scriptsafe
 from odoo.exceptions import UserError, ValidationError, MissingError
+import lxml.etree
 
 unsafe_eval = eval
 
@@ -33,13 +34,13 @@ class TestQWebTField(TransactionCase):
 
         result = self.engine._render(field, {'company': company})
         self.assertEqual(
-            etree.fromstring(result),
+            etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False)),
             etree.fromstring('<span data-oe-model="res.company" data-oe-id="%d" '
                   'data-oe-field="name" data-oe-type="char" '
                   'data-oe-expression="company.name">%s</span>' % (
                 company.id,
                 "My Test Company",
-            )),
+            ), parser=lxml.etree.XMLParser(resolve_entities=False)),
         )
 
     def test_i18n(self):
@@ -49,13 +50,13 @@ class TestQWebTField(TransactionCase):
 
         result = self.engine._render(field, {'company': company})
         self.assertEqual(
-            etree.fromstring(result),
+            etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False)),
             etree.fromstring('<span data-oe-model="res.company" data-oe-id="%d" '
                   'data-oe-field="name" data-oe-type="char" '
                   'data-oe-expression="company.name">%s</span>' % (
                 company.id,
                 misc.html_escape(s),
-            )),
+            ), parser=lxml.etree.XMLParser(resolve_entities=False)),
         )
 
     def test_reject_crummy_tags(self):
@@ -78,7 +79,7 @@ class TestQWebTField(TransactionCase):
                 <t t-name="base.dummy"><root><span t-esc="5" t-options="{'widget': 'char'}" t-options-widget="'float'" t-options-precision="4"/></root></t>
             """
         })
-        text = etree.fromstring(self.env['ir.qweb']._render(view1.id)).find('span').text
+        text = etree.fromstring(self.env['ir.qweb']._render(view1.id), parser=lxml.etree.XMLParser(resolve_entities=False)).find('span').text
         self.assertEqual(text, '5.0000')
 
     def test_xss_breakout(self):
@@ -96,7 +97,7 @@ class TestQWebTField(TransactionCase):
         })
         rendered = self.env['ir.qweb']._render(view.id, {'malicious': '1</script><script>alert("pwned")</script><script>'})
         self.assertIn('alert', rendered, "%r doesn't seem to be rendered" % rendered)
-        doc = etree.fromstring(rendered)
+        doc = etree.fromstring(rendered, parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(len(doc.xpath('//script')), 1)
 
     def test_default_value(self):
@@ -187,7 +188,7 @@ class TestQWebNS(TransactionCase):
             """ % expected_result
         })
 
-        self.assertEqual(etree.fromstring(self.env['ir.qweb']._render(view1.id)), etree.fromstring(expected_result))
+        self.assertEqual(etree.fromstring(self.env['ir.qweb']._render(view1.id), parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(expected_result, parser=lxml.etree.XMLParser(resolve_entities=False)))
 
     def test_render_static_xml_with_namespace_2(self):
         """ Test the rendering on a namespaced view with no static content. The resulting string should be untouched.
@@ -225,7 +226,7 @@ class TestQWebNS(TransactionCase):
             """ % expected_result
         })
 
-        self.assertEqual(etree.fromstring(self.env['ir.qweb']._render(view1.id)), etree.fromstring(expected_result))
+        self.assertEqual(etree.fromstring(self.env['ir.qweb']._render(view1.id), parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(expected_result, parser=lxml.etree.XMLParser(resolve_entities=False)))
 
     def test_render_static_xml_with_useless_distributed_namespace(self):
         """ Test that redundant namespaces are stripped upon rendering.
@@ -256,9 +257,9 @@ class TestQWebNS(TransactionCase):
                     </h:tr>
                 </h:table>
             </root>
-        """)
+        """, parser=lxml.etree.XMLParser(resolve_entities=False))
 
-        self.assertEqual(etree.fromstring(self.env['ir.qweb']._render(view1.id)), expected_result)
+        self.assertEqual(etree.fromstring(self.env['ir.qweb']._render(view1.id), parser=lxml.etree.XMLParser(resolve_entities=False)), expected_result)
 
     def test_render_static_xml_with_namespace_3(self):
         expected_result = """
@@ -273,7 +274,7 @@ class TestQWebNS(TransactionCase):
             """ % expected_result
         })
 
-        self.assertEqual(etree.fromstring(self.env['ir.qweb']._render(view1.id)), etree.fromstring(expected_result))
+        self.assertEqual(etree.fromstring(self.env['ir.qweb']._render(view1.id), parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(expected_result, parser=lxml.etree.XMLParser(resolve_entities=False)))
 
     def test_render_static_xml_with_namespace_dynamic(self):
         """ Test the rendering on a namespaced view with dynamic URI (need default namespace uri).
@@ -311,7 +312,7 @@ class TestQWebNS(TransactionCase):
 
         rendering = self.env['ir.qweb']._render(view1.id, values)
 
-        self.assertEqual(etree.fromstring(rendering), etree.fromstring(expected_result % values))
+        self.assertEqual(etree.fromstring(rendering, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(expected_result % values, parser=lxml.etree.XMLParser(resolve_entities=False)))
 
     def test_render_static_xml_with_namespace_dynamic_2(self):
         """ Test the rendering on a namespaced view with dynamic URI (need default namespace uri).
@@ -356,7 +357,7 @@ class TestQWebNS(TransactionCase):
 
         rendering = self.env['ir.qweb']._render(view1.id, values)
 
-        self.assertEqual(etree.fromstring(rendering), etree.fromstring(expected_result % values))
+        self.assertEqual(etree.fromstring(rendering, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(expected_result % values, parser=lxml.etree.XMLParser(resolve_entities=False)))
 
     def test_render_dynamic_xml_with_namespace_t_esc(self):
         """ Test that rendering a template containing a node having both an ns declaration and a t-esc attribute correctly
@@ -372,9 +373,9 @@ class TestQWebNS(TransactionCase):
             """
         })
 
-        expected_result = etree.fromstring("""<Invoice xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2">test</Invoice>""")
+        expected_result = etree.fromstring("""<Invoice xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2">test</Invoice>""", parser=lxml.etree.XMLParser(resolve_entities=False))
 
-        self.assertEqual(etree.fromstring(self.env['ir.qweb']._render(view1.id)), expected_result)
+        self.assertEqual(etree.fromstring(self.env['ir.qweb']._render(view1.id), parser=lxml.etree.XMLParser(resolve_entities=False)), expected_result)
 
     def test_render_dynamic_xml_with_namespace_t_esc_with_useless_distributed_namespace(self):
         """ Test that rendering a template containing a node having both an ns declaration and a t-esc attribute correctly
@@ -396,9 +397,9 @@ class TestQWebNS(TransactionCase):
             <Invoice xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" test="test">
                 <cac:Test>blabla</cac:Test>
             </Invoice>
-        """)
+        """, parser=lxml.etree.XMLParser(resolve_entities=False))
 
-        self.assertEqual(etree.fromstring(self.env['ir.qweb']._render(view1.id)), expected_result)
+        self.assertEqual(etree.fromstring(self.env['ir.qweb']._render(view1.id), parser=lxml.etree.XMLParser(resolve_entities=False)), expected_result)
 
     def test_render_dynamic_xml_with_namespace_t_attf(self):
         """ Test that rendering a template containing a node having both an ns declaration and a t-attf attribute correctly
@@ -436,9 +437,9 @@ class TestQWebNS(TransactionCase):
                     <f:width test="1">80</f:width>
                 </f:table>
             </root>
-        """)
+        """, parser=lxml.etree.XMLParser(resolve_entities=False))
 
-        self.assertEqual(etree.fromstring(self.env['ir.qweb']._render(view1.id)), expected_result)
+        self.assertEqual(etree.fromstring(self.env['ir.qweb']._render(view1.id), parser=lxml.etree.XMLParser(resolve_entities=False)), expected_result)
 
     def test_render_dynamic_xml_with_namespace_t_attf_with_useless_distributed_namespace(self):
         """ Test that rendering a template containing a node having both an ns declaration and a t-attf attribute correctly
@@ -478,9 +479,9 @@ class TestQWebNS(TransactionCase):
                     </f:table>
                 </root>
 
-        """)
+        """, parser=lxml.etree.XMLParser(resolve_entities=False))
 
-        self.assertEqual(etree.fromstring(self.env['ir.qweb']._render(view1.id)), expected_result)
+        self.assertEqual(etree.fromstring(self.env['ir.qweb']._render(view1.id), parser=lxml.etree.XMLParser(resolve_entities=False)), expected_result)
 
     def test_render_dynamic_xml_with_namespace_2(self):
         view1 = self.env['ir.ui.view'].create({
@@ -511,9 +512,9 @@ class TestQWebNS(TransactionCase):
                     Oasis <cac:Test>4</cac:Test>
 
             </Invoice>
-        """)
+        """, parser=lxml.etree.XMLParser(resolve_entities=False))
 
-        self.assertEqual(etree.fromstring(self.env['ir.qweb']._render(view1.id, {'version_id': 1.0})), expected_result)
+        self.assertEqual(etree.fromstring(self.env['ir.qweb']._render(view1.id, {'version_id': 1.0}), parser=lxml.etree.XMLParser(resolve_entities=False)), expected_result)
 
     def test_render_static_xml_with_namespaced_attributes(self):
         view1 = self.env['ir.ui.view'].create({
@@ -526,9 +527,9 @@ class TestQWebNS(TransactionCase):
             """
         })
 
-        expected_result = etree.fromstring("""<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sat.gob.mx/cfd/3 http://www.sat.gob.mx/sitio_internet/cfd/3/cfdv32.xsd">abc</cfdi:Comprobante>""")
+        expected_result = etree.fromstring("""<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sat.gob.mx/cfd/3 http://www.sat.gob.mx/sitio_internet/cfd/3/cfdv32.xsd">abc</cfdi:Comprobante>""", parser=lxml.etree.XMLParser(resolve_entities=False))
 
-        self.assertEqual(etree.fromstring(self.env['ir.qweb']._render(view1.id)), expected_result)
+        self.assertEqual(etree.fromstring(self.env['ir.qweb']._render(view1.id), parser=lxml.etree.XMLParser(resolve_entities=False)), expected_result)
 
     def test_render_dynamic_xml_with_namespaced_attributes(self):
         view1 = self.env['ir.ui.view'].create({
@@ -541,9 +542,9 @@ class TestQWebNS(TransactionCase):
             """
         })
 
-        expected_result = etree.fromstring("""<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sat.gob.mx/cfd/3 http://www.sat.gob.mx/sitio_internet/cfd/3/cfdv32.xsd">abc</cfdi:Comprobante>""")
+        expected_result = etree.fromstring("""<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sat.gob.mx/cfd/3 http://www.sat.gob.mx/sitio_internet/cfd/3/cfdv32.xsd">abc</cfdi:Comprobante>""", parser=lxml.etree.XMLParser(resolve_entities=False))
 
-        self.assertEqual(etree.fromstring(self.env['ir.qweb']._render(view1.id)), expected_result)
+        self.assertEqual(etree.fromstring(self.env['ir.qweb']._render(view1.id), parser=lxml.etree.XMLParser(resolve_entities=False)), expected_result)
 
     def test_render_static_xml_with_t_call(self):
         view1 = self.env['ir.ui.view'].create({
@@ -578,7 +579,7 @@ class TestQWebNS(TransactionCase):
         })
 
         result = self.env['ir.qweb']._render(view2.id)
-        result_etree = etree.fromstring(result)
+        result_etree = etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False))
 
         # check that the root tag has all its xmlns
         expected_ns = {
@@ -638,10 +639,10 @@ class TestQWebNS(TransactionCase):
                     </h:tr>
                 </h:table>
             </root>
-        """)
+        """, parser=lxml.etree.XMLParser(resolve_entities=False))
 
         self.assertEqual(
-            etree.fromstring(self.env['ir.qweb'].with_context(check_view_ids=[view1.id, view2.id])._render(view1.id)),
+            etree.fromstring(self.env['ir.qweb'].with_context(check_view_ids=[view1.id, view2.id])._render(view1.id), parser=lxml.etree.XMLParser(resolve_entities=False)),
             expected_result
         )
 
@@ -698,7 +699,7 @@ class TestQWebNS(TransactionCase):
 
         rendering = self.env['ir.qweb']._render(view1.id)
 
-        self.assertEqual(etree.fromstring(rendering), etree.fromstring(expected_result))
+        self.assertEqual(etree.fromstring(rendering, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(expected_result, parser=lxml.etree.XMLParser(resolve_entities=False)))
 
 class TestQWebBasic(TransactionCase):
     def test_compile_expr(self):
@@ -990,7 +991,7 @@ class TestQWebBasic(TransactionCase):
                 </section>
             """
         rendered = self.env['ir.qweb']._render(t.id)
-        self.assertEqual(etree.fromstring(rendered), etree.fromstring(result))
+        self.assertEqual(etree.fromstring(rendered, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False)))
 
     def test_set_1(self):
         t = self.env['ir.ui.view'].create({
@@ -1514,7 +1515,7 @@ class TestQWebBasic(TransactionCase):
         })
 
         result = self.env['ir.qweb']._render(view1.id, {})
-        self.assertEqual(etree.fromstring(result), etree.fromstring("""
+        self.assertEqual(etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring("""
             <div>
                 <table>
                     <tr><td>1</td></tr>
@@ -1522,7 +1523,7 @@ class TestQWebBasic(TransactionCase):
                 <span>1</span>
                 <span>1</span>
             </div>
-        """), 'render t-call use lexical scoping, t-call content use independant scoping')
+        """, parser=lxml.etree.XMLParser(resolve_entities=False)), 'render t-call use lexical scoping, t-call content use independant scoping')
 
     def test_call_error(self):
         view1 = self.env['ir.ui.view'].create({
@@ -1874,14 +1875,14 @@ class TestQwebCache(TransactionCase):
                     <tr><td><span>3</span></td></tr>
                 </table>
             </div>
-        """)
+        """, parser=lxml.etree.XMLParser(resolve_entities=False))
 
         IrQweb = self.env['ir.qweb'].with_context(is_t_cache_disabled=False)
 
-        result = etree.fromstring(IrQweb._render(view1.id, {'cache_id': 1, 'value': [1, 2, 3]}))
+        result = etree.fromstring(IrQweb._render(view1.id, {'cache_id': 1, 'value': [1, 2, 3]}), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, expected_result, 'First rendering (add in cache)')
 
-        result = etree.fromstring(IrQweb._render(view1.id, {'cache_id': 1, 'value': [10, 20, 30]}))
+        result = etree.fromstring(IrQweb._render(view1.id, {'cache_id': 1, 'value': [10, 20, 30]}), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, expected_result, 'Next rendering use cache')
 
     def test_render_xml_cache_different(self):
@@ -1913,7 +1914,7 @@ class TestQwebCache(TransactionCase):
             'cache_id2': (1,),
             'value': [1, 2, 3],
             'value2': [10, 20, 30]
-        }))
+        }), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, etree.fromstring("""
             <div class="toto">
                 <table>
@@ -1927,14 +1928,14 @@ class TestQwebCache(TransactionCase):
                     <tr><td><span>30</span></td></tr>
                 </table>
             </div>
-        """), 'First rendering (add in cache with different cache)')
+        """, parser=lxml.etree.XMLParser(resolve_entities=False)), 'First rendering (add in cache with different cache)')
 
         result = etree.fromstring(IrQweb._render(view1.id, {
             'cache_id': (2, 5, 6),
             'cache_id2': (2, 5, 5),
             'value': [41, 42, 43],
             'value2': [51, 52, 53]
-        }))
+        }), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, etree.fromstring("""
             <div class="toto">
                 <table>
@@ -1948,7 +1949,7 @@ class TestQwebCache(TransactionCase):
                     <tr><td><span>53</span></td></tr>
                 </table>
             </div>
-        """), 'Use different cache id')
+        """, parser=lxml.etree.XMLParser(resolve_entities=False)), 'Use different cache id')
 
     def test_render_xml_cache_contains_nocache(self):
         view1 = self.env['ir.ui.view'].create({
@@ -1968,7 +1969,7 @@ class TestQwebCache(TransactionCase):
         })
         IrQweb = self.env['ir.qweb'].with_context(is_t_cache_disabled=False)
 
-        result = etree.fromstring(IrQweb._render(view1.id, {'cache_id': 1, 'value': [1, 2, 3]}))
+        result = etree.fromstring(IrQweb._render(view1.id, {'cache_id': 1, 'value': [1, 2, 3]}), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, etree.fromstring("""
             <div class="toto">
                 <table>
@@ -1977,9 +1978,9 @@ class TestQwebCache(TransactionCase):
                     <tr><td><span>3</span></td></tr>
                 </table>
             </div>
-        """), 'First rendering add compiled values in cache')
+        """, parser=lxml.etree.XMLParser(resolve_entities=False)), 'First rendering add compiled values in cache')
 
-        result = etree.fromstring(IrQweb._render(view1.id, {'cache_id': 1, 'value': [10, 20, 30]}))
+        result = etree.fromstring(IrQweb._render(view1.id, {'cache_id': 1, 'value': [10, 20, 30]}), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, etree.fromstring("""
             <div class="toto">
                 <table>
@@ -1988,7 +1989,7 @@ class TestQwebCache(TransactionCase):
                     <tr><td><span>3</span></td></tr>
                 </table>
             </div>
-        """), 'Next rendering use cache exept for t-nocache=""')
+        """, parser=lxml.etree.XMLParser(resolve_entities=False)), 'Next rendering use cache exept for t-nocache=""')
 
     def test_render_xml_cache_nocache_cache(self):
         view1 = self.env['ir.ui.view'].create({
@@ -2023,7 +2024,7 @@ class TestQwebCache(TransactionCase):
             'cache_id2': (2, 0),
             'value': [1, 2, 3],
             'value2': [10, 20, 30]
-        }))
+        }), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, etree.fromstring("""
             <div class="toto">
                 <table>
@@ -2040,14 +2041,14 @@ class TestQwebCache(TransactionCase):
                     <tr><td>3</td></tr>
                 </table>
             </div>
-        """), 'First rendering (add in cache)')
+        """, parser=lxml.etree.XMLParser(resolve_entities=False)), 'First rendering (add in cache)')
 
         result = etree.fromstring(IrQweb._render(view1.id, {
             'cache_id': (1, 0),
             'cache_id2': (2, 1),
             'value': [41, 42, 43],
             'value2': [51, 52, 53]
-        }))
+        }), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, etree.fromstring("""
             <div class="toto">
                 <table>
@@ -2064,14 +2065,14 @@ class TestQwebCache(TransactionCase):
                     <tr><td>3</td></tr>
                 </table>
             </div>
-        """), 'Second rendering (change inside cache id)')
+        """, parser=lxml.etree.XMLParser(resolve_entities=False)), 'Second rendering (change inside cache id)')
 
         result = etree.fromstring(IrQweb._render(view1.id, {
             'cache_id': (1, 1),
             'cache_id2': (2, 0),
             'value': [31, 32, 33],
             'value2': [51, 52, 53]
-        }))
+        }), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, etree.fromstring("""
             <div class="toto">
                 <table>
@@ -2088,7 +2089,7 @@ class TestQwebCache(TransactionCase):
                     <tr><td>33</td></tr>
                 </table>
             </div>
-        """), 'Third rendering (change main cache id, old cache inside)')
+        """, parser=lxml.etree.XMLParser(resolve_entities=False)), 'Third rendering (change main cache id, old cache inside)')
 
     def test_render_xml_cache_nocache_cache_on_same_tag(self):
         view1 = self.env['ir.ui.view'].create({
@@ -2123,7 +2124,7 @@ class TestQwebCache(TransactionCase):
             'cache_id2': (2, 0),
             'value': [1, 2, 3],
             'value2': [10, 20, 30]
-        }))
+        }), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, etree.fromstring("""
             <div class="toto">
                 <table>
@@ -2140,14 +2141,14 @@ class TestQwebCache(TransactionCase):
                     <tr><td>3</td></tr>
                 </table>
             </div>
-        """), 'First rendering (add in cache)')
+        """, parser=lxml.etree.XMLParser(resolve_entities=False)), 'First rendering (add in cache)')
 
         result = etree.fromstring(IrQweb._render(view1.id, {
             'cache_id': (1, 0),
             'cache_id2': (2, 1),
             'value': [41, 42, 43],
             'value2': [51, 52, 53]
-        }))
+        }), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, etree.fromstring("""
             <div class="toto">
                 <table>
@@ -2164,14 +2165,14 @@ class TestQwebCache(TransactionCase):
                     <tr><td>3</td></tr>
                 </table>
             </div>
-        """), 'Second rendering (change inside cache id)')
+        """, parser=lxml.etree.XMLParser(resolve_entities=False)), 'Second rendering (change inside cache id)')
 
         result = etree.fromstring(IrQweb._render(view1.id, {
             'cache_id': (1, 1),
             'cache_id2': (2, 0),
             'value': [31, 32, 33],
             'value2': [51, 52, 53]
-        }))
+        }), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, etree.fromstring("""
             <div class="toto">
                 <table>
@@ -2188,7 +2189,7 @@ class TestQwebCache(TransactionCase):
                     <tr><td>33</td></tr>
                 </table>
             </div>
-        """), 'Third rendering (change main cache id, old cache inside)')
+        """, parser=lxml.etree.XMLParser(resolve_entities=False)), 'Third rendering (change main cache id, old cache inside)')
 
     def test_render_xml_dont_use_cache_base(self):
         view1 = self.env['ir.ui.view'].create({
@@ -2208,7 +2209,7 @@ class TestQwebCache(TransactionCase):
         })
         IrQweb = self.env['ir.qweb'].with_context(is_t_cache_disabled=True)
 
-        result = etree.fromstring(IrQweb._render(view1.id, {'cache_id': 1, 'value': [1, 2, 3]}))
+        result = etree.fromstring(IrQweb._render(view1.id, {'cache_id': 1, 'value': [1, 2, 3]}), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, etree.fromstring("""
             <div class="toto">
                 <table>
@@ -2217,9 +2218,9 @@ class TestQwebCache(TransactionCase):
                     <tr><td><span>3</span></td></tr>
                 </table>
             </div>
-        """), 'First rendering')
+        """, parser=lxml.etree.XMLParser(resolve_entities=False)), 'First rendering')
 
-        result = etree.fromstring(IrQweb._render(view1.id, {'cache_id': 1, 'value': [10, 20, 30]}))
+        result = etree.fromstring(IrQweb._render(view1.id, {'cache_id': 1, 'value': [10, 20, 30]}), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, etree.fromstring("""
             <div class="toto">
                 <table>
@@ -2228,7 +2229,7 @@ class TestQwebCache(TransactionCase):
                     <tr><td><span>30</span></td></tr>
                 </table>
             </div>
-        """), 'Next rendering cannot cache (use_qweb_t_cache is False)')
+        """, parser=lxml.etree.XMLParser(resolve_entities=False)), 'Next rendering cannot cache (use_qweb_t_cache is False)')
 
     def test_render_xml_dont_use_cache_different(self):
         view1 = self.env['ir.ui.view'].create({
@@ -2259,7 +2260,7 @@ class TestQwebCache(TransactionCase):
             'cache_id2': 1,
             'value': [1, 2, 3],
             'value2': [10, 20, 30]
-        }))
+        }), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, etree.fromstring("""
             <div class="toto">
                 <table>
@@ -2273,14 +2274,14 @@ class TestQwebCache(TransactionCase):
                     <tr><td><span>30</span></td></tr>
                 </table>
             </div>
-        """), 'First rendering')
+        """, parser=lxml.etree.XMLParser(resolve_entities=False)), 'First rendering')
 
         result = etree.fromstring(IrQweb._render(view1.id, {
             'cache_id': (2, 5, 6),
             'cache_id2': (2, 5, 5),
             'value': [41, 42, 43],
             'value2': [51, 52, 53]
-        }))
+        }), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, etree.fromstring("""
             <div class="toto">
                 <table>
@@ -2294,7 +2295,7 @@ class TestQwebCache(TransactionCase):
                     <tr><td><span>53</span></td></tr>
                 </table>
             </div>
-        """), 'Use different cache id')
+        """, parser=lxml.etree.XMLParser(resolve_entities=False)), 'Use different cache id')
 
     def test_render_xml_dont_use_cache_contains_nocache(self):
         view1 = self.env['ir.ui.view'].create({
@@ -2314,7 +2315,7 @@ class TestQwebCache(TransactionCase):
         })
         IrQweb = self.env['ir.qweb'].with_context(is_t_cache_disabled=True)
 
-        result = etree.fromstring(IrQweb._render(view1.id, {'cache_id': 1, 'value': [1, 2, 3]}))
+        result = etree.fromstring(IrQweb._render(view1.id, {'cache_id': 1, 'value': [1, 2, 3]}), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, etree.fromstring("""
             <div class="toto">
                 <table>
@@ -2323,9 +2324,9 @@ class TestQwebCache(TransactionCase):
                     <tr><td><span>3</span></td></tr>
                 </table>
             </div>
-        """), 'First rendering')
+        """, parser=lxml.etree.XMLParser(resolve_entities=False)), 'First rendering')
 
-        result = etree.fromstring(IrQweb._render(view1.id, {'cache_id': 1, 'value': [10, 20, 30]}))
+        result = etree.fromstring(IrQweb._render(view1.id, {'cache_id': 1, 'value': [10, 20, 30]}), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, etree.fromstring("""
             <div class="toto">
                 <table>
@@ -2334,7 +2335,7 @@ class TestQwebCache(TransactionCase):
                     <tr><td><span>30</span></td></tr>
                 </table>
             </div>
-        """), 'Next rendering cannot use cache (use_qweb_t_cache is False)')
+        """, parser=lxml.etree.XMLParser(resolve_entities=False)), 'Next rendering cannot use cache (use_qweb_t_cache is False)')
 
     def test_render_xml_dont_use_cache_recursive(self):
         view1 = self.env['ir.ui.view'].create({
@@ -2368,7 +2369,7 @@ class TestQwebCache(TransactionCase):
             'cache_id2': (2, 0),
             'value': [1, 2, 3],
             'value2': [10, 20, 30]
-        }))
+        }), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, etree.fromstring("""
             <div class="toto">
                 <table>
@@ -2385,14 +2386,14 @@ class TestQwebCache(TransactionCase):
                     <tr><td>3</td></tr>
                 </table>
             </div>
-        """), 'First rendering')
+        """, parser=lxml.etree.XMLParser(resolve_entities=False)), 'First rendering')
 
         result = etree.fromstring(IrQweb._render(view1.id, {
             'cache_id': (1, 0),
             'cache_id2': (2, 1),
             'value': [41, 42, 43],
             'value2': [51, 52, 53]
-        }))
+        }), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, etree.fromstring("""
             <div class="toto">
                 <table>
@@ -2409,14 +2410,14 @@ class TestQwebCache(TransactionCase):
                     <tr><td>43</td></tr>
                 </table>
             </div>
-        """), 'Next rendering cannot use cache (use_qweb_t_cache is False)')
+        """, parser=lxml.etree.XMLParser(resolve_entities=False)), 'Next rendering cannot use cache (use_qweb_t_cache is False)')
 
         result = etree.fromstring(IrQweb._render(view1.id, {
             'cache_id': (1, 1),
             'cache_id2': (2, 0),
             'value': [31, 32, 33],
             'value2': [51, 52, 53]
-        }))
+        }), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, etree.fromstring("""
             <div class="toto">
                 <table>
@@ -2433,7 +2434,7 @@ class TestQwebCache(TransactionCase):
                     <tr><td>33</td></tr>
                 </table>
             </div>
-        """), 'Third rendering cannot use cache (use_qweb_t_cache is False)')
+        """, parser=lxml.etree.XMLParser(resolve_entities=False)), 'Third rendering cannot use cache (use_qweb_t_cache is False)')
 
     def test_render_xml_dont_use_cache_false_recursive(self):
         view1 = self.env['ir.ui.view'].create({
@@ -2467,7 +2468,7 @@ class TestQwebCache(TransactionCase):
             'cache_id2': (2, 0),
             'value': [1, 2, 3],
             'value2': [10, 20, 30]
-        }))
+        }), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, etree.fromstring("""
             <div class="toto">
                 <table>
@@ -2484,14 +2485,14 @@ class TestQwebCache(TransactionCase):
                     <tr><td>3</td></tr>
                 </table>
             </div>
-        """), 'First rendering')
+        """, parser=lxml.etree.XMLParser(resolve_entities=False)), 'First rendering')
 
         result = etree.fromstring(self.env['ir.qweb']._render(view1.id, {
             'cache_id': (1, 0),
             'cache_id2': (2, 1),
             'value': [41, 42, 43],
             'value2': [51, 52, 53]
-        }))
+        }), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, etree.fromstring("""
             <div class="toto">
                 <table>
@@ -2508,14 +2509,14 @@ class TestQwebCache(TransactionCase):
                     <tr><td>43</td></tr>
                 </table>
             </div>
-        """), 'Next rendering cannot use cache (use_qweb_t_cache is False)')
+        """, parser=lxml.etree.XMLParser(resolve_entities=False)), 'Next rendering cannot use cache (use_qweb_t_cache is False)')
 
         result = etree.fromstring(self.env['ir.qweb']._render(view1.id, {
             'cache_id': (1, 1),
             'cache_id2': (2, 0),
             'value': [31, 32, 33],
             'value2': [51, 52, 53]
-        }))
+        }), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, etree.fromstring("""
             <div class="toto">
                 <table>
@@ -2532,7 +2533,7 @@ class TestQwebCache(TransactionCase):
                     <tr><td>33</td></tr>
                 </table>
             </div>
-        """), 'Third rendering cannot use cache (use_qweb_t_cache is False)')
+        """, parser=lxml.etree.XMLParser(resolve_entities=False)), 'Third rendering cannot use cache (use_qweb_t_cache is False)')
 
     def test_render_xml_nocache_use_the_root_values(self):
         template_page = self.env['ir.ui.view'].create({
@@ -2561,7 +2562,7 @@ class TestQwebCache(TransactionCase):
                 <div>cache: 101</div>
             </section>
         """
-        self.assertEqual(etree.fromstring(render), etree.fromstring(result), 'rendering 1 (101 != 1: cached t-set should never be applied on root rendering)')
+        self.assertEqual(etree.fromstring(render, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False)), 'rendering 1 (101 != 1: cached t-set should never be applied on root rendering)')
 
         render = IrQweb._render(template_page.id, {
             'cache_id': 1,
@@ -2573,7 +2574,7 @@ class TestQwebCache(TransactionCase):
                 <div>cache: 101</div>
             </section>
         """
-        self.assertEqual(etree.fromstring(render), etree.fromstring(result), 'rendering 2 (102 != 2: cached t-set should never be applied on root rendering)')
+        self.assertEqual(etree.fromstring(render, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False)), 'rendering 2 (102 != 2: cached t-set should never be applied on root rendering)')
 
         render = IrQweb._render(template_page.id, {
             'cache_id': 3,
@@ -2585,7 +2586,7 @@ class TestQwebCache(TransactionCase):
                 <div>cache: 103</div>
             </section>
         """
-        self.assertEqual(etree.fromstring(render), etree.fromstring(result), 'rendering 3 (103 != 3: cached t-set should never be applied on root rendering)')
+        self.assertEqual(etree.fromstring(render, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False)), 'rendering 3 (103 != 3: cached t-set should never be applied on root rendering)')
 
     def test_render_xml_nocache_use_the_root_values_and_cached_values(self):
         template_page = self.env['ir.ui.view'].create({
@@ -2614,7 +2615,7 @@ class TestQwebCache(TransactionCase):
                 <div>cache: 101</div>
             </section>
         """
-        self.assertEqual(etree.fromstring(render), etree.fromstring(result), 'rendering 1 (1 != 101: new cached values should be add to the root rendering)')
+        self.assertEqual(etree.fromstring(render, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False)), 'rendering 1 (1 != 101: new cached values should be add to the root rendering)')
 
         render = IrQweb._render(template_page.id, {
             'cache_id': 1,
@@ -2626,7 +2627,7 @@ class TestQwebCache(TransactionCase):
                 <div>cache: 101</div>
             </section>
         """
-        self.assertEqual(etree.fromstring(render), etree.fromstring(result), 'rendering 2 (102 != 2: cached values should be used)')
+        self.assertEqual(etree.fromstring(render, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False)), 'rendering 2 (102 != 2: cached values should be used)')
 
         render = IrQweb._render(template_page.id, {
             'cache_id': 3,
@@ -2638,7 +2639,7 @@ class TestQwebCache(TransactionCase):
                 <div>cache: 103</div>
             </section>
         """
-        self.assertEqual(etree.fromstring(render), etree.fromstring(result), 'rendering 3 (3 != 103: new cached values should be add to the root rendering)')
+        self.assertEqual(etree.fromstring(render, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False)), 'rendering 3 (3 != 103: new cached values should be add to the root rendering)')
 
     def test_render_xml_nocache_use_the_root_values_and_cached_values_error(self):
         template_page = self.env['ir.ui.view'].create({
@@ -2690,7 +2691,7 @@ class TestQwebCache(TransactionCase):
                 </section>
             </root>
         """
-        self.assertEqual(etree.fromstring(render), etree.fromstring(result), 'rendering 1 (1 != 101: cached t-set should is applied on first rendering)')
+        self.assertEqual(etree.fromstring(render, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False)), 'rendering 1 (1 != 101: cached t-set should is applied on first rendering)')
 
         render = IrQweb._render(template_page.id, {
             'cache_id': 1,
@@ -2704,7 +2705,7 @@ class TestQwebCache(TransactionCase):
                 </section>
             </root>
         """
-        self.assertEqual(etree.fromstring(render), etree.fromstring(result), 'rendering 2 (2 != 102: cached t-set should be applied the template part are rendered every time)')
+        self.assertEqual(etree.fromstring(render, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False)), 'rendering 2 (2 != 102: cached t-set should be applied the template part are rendered every time)')
 
         render = IrQweb._render(template_page.id, {
             'cache_id': 3,
@@ -2718,7 +2719,7 @@ class TestQwebCache(TransactionCase):
                 </section>
             </root>
         """
-        self.assertEqual(etree.fromstring(render), etree.fromstring(result), 'rendering 3 (3 != 103: cached t-set should applied because the new cache key is created)')
+        self.assertEqual(etree.fromstring(render, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False)), 'rendering 3 (3 != 103: cached t-set should applied because the new cache key is created)')
 
     def test_render_xml_cache_with_t_set_in_cache(self):
         template_page = self.env['ir.ui.view'].create({
@@ -2752,7 +2753,7 @@ class TestQwebCache(TransactionCase):
                 <div>out of cache: 1</div>
             </root>
         """
-        self.assertEqual(etree.fromstring(render), etree.fromstring(result), 'rendering 1')
+        self.assertEqual(etree.fromstring(render, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False)), 'rendering 1')
 
         render = IrQweb._render(template_page.id, {
             'cache_id': 1,
@@ -2767,7 +2768,7 @@ class TestQwebCache(TransactionCase):
                 <div>out of cache: 2</div>
             </root>
         """
-        self.assertEqual(etree.fromstring(render), etree.fromstring(result), 'rendering 2')
+        self.assertEqual(etree.fromstring(render, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False)), 'rendering 2')
 
         render = IrQweb._render(template_page.id, {
             'cache_id': 3,
@@ -2782,7 +2783,7 @@ class TestQwebCache(TransactionCase):
                 <div>out of cache: 3</div>
             </root>
         """
-        self.assertEqual(etree.fromstring(render), etree.fromstring(result), 'rendering 3')
+        self.assertEqual(etree.fromstring(render, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False)), 'rendering 3')
 
     def test_render_xml_cache_with_t_set_wrap_t_cache(self):
         template_page = self.env['ir.ui.view'].create({
@@ -2824,7 +2825,7 @@ class TestQwebCache(TransactionCase):
                 </div>
             </root>
         """
-        self.assertEqual(etree.fromstring(render), etree.fromstring(result), 'rendering 1')
+        self.assertEqual(etree.fromstring(render, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False)), 'rendering 1')
 
         render = IrQweb._render(template_page.id, {
             'cache_1': 2,
@@ -2842,7 +2843,7 @@ class TestQwebCache(TransactionCase):
                 </div>
             </root>
         """
-        self.assertEqual(etree.fromstring(render), etree.fromstring(result), 'rendering 2')
+        self.assertEqual(etree.fromstring(render, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False)), 'rendering 2')
 
         render = IrQweb._render(template_page.id, {
             'cache_1': 2,
@@ -2860,7 +2861,7 @@ class TestQwebCache(TransactionCase):
                 </div>
             </root>
         """
-        self.assertEqual(etree.fromstring(render), etree.fromstring(result), 'rendering 3')
+        self.assertEqual(etree.fromstring(render, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False)), 'rendering 3')
 
         render = IrQweb._render(template_page.id, {
             'cache_1': 3,
@@ -2878,7 +2879,7 @@ class TestQwebCache(TransactionCase):
                 </div>
             </root>
         """
-        self.assertEqual(etree.fromstring(render), etree.fromstring(result), 'rendering 4')
+        self.assertEqual(etree.fromstring(render, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False)), 'rendering 4')
 
     def test_render_xml_t_set_wrap_t_cache(self):
         template_page = self.env['ir.ui.view'].create({
@@ -2919,7 +2920,7 @@ class TestQwebCache(TransactionCase):
                 </div>
             </root>
         """
-        self.assertEqual(etree.fromstring(render), etree.fromstring(result), 'rendering 1')
+        self.assertEqual(etree.fromstring(render, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False)), 'rendering 1')
 
         render = IrQweb._render(template_page.id, {
             'cache_id': 1,
@@ -2936,7 +2937,7 @@ class TestQwebCache(TransactionCase):
                 </div>
             </root>
         """
-        self.assertEqual(etree.fromstring(render), etree.fromstring(result), 'rendering 2')
+        self.assertEqual(etree.fromstring(render, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False)), 'rendering 2')
 
         render = IrQweb._render(template_page.id, {
             'cache_id': 3,
@@ -2953,7 +2954,7 @@ class TestQwebCache(TransactionCase):
                 </div>
             </root>
         """
-        self.assertEqual(etree.fromstring(render), etree.fromstring(result), 'rendering 3')
+        self.assertEqual(etree.fromstring(render, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False)), 'rendering 3')
 
     def test_render_xml_nocache_in_cache_in_cache(self):
         template_page = self.env['ir.ui.view'].create({
@@ -2990,7 +2991,7 @@ class TestQwebCache(TransactionCase):
                 </section>
             </root>
         """
-        self.assertEqual(etree.fromstring(render), etree.fromstring(result), 'rendering 1')
+        self.assertEqual(etree.fromstring(render, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False)), 'rendering 1')
 
         render = IrQweb._render(template_page.id, {
             'key1': (1,),
@@ -3007,7 +3008,7 @@ class TestQwebCache(TransactionCase):
                 </section>
             </root>
         """
-        self.assertEqual(etree.fromstring(render), etree.fromstring(result), 'rendering 2')
+        self.assertEqual(etree.fromstring(render, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False)), 'rendering 2')
 
         render = IrQweb._render(template_page.id, {
             'key1': (1,),
@@ -3024,7 +3025,7 @@ class TestQwebCache(TransactionCase):
                 </section>
             </root>
         """
-        self.assertEqual(etree.fromstring(render), etree.fromstring(result), 'rendering 3')
+        self.assertEqual(etree.fromstring(render, parser=lxml.etree.XMLParser(resolve_entities=False)), etree.fromstring(result, parser=lxml.etree.XMLParser(resolve_entities=False)), 'rendering 3')
 
     def test_render_xml_conditional_cache(self):
         view1 = self.env['ir.ui.view'].create({
@@ -3050,14 +3051,14 @@ class TestQwebCache(TransactionCase):
                     <tr><td><span>3</span></td></tr>
                 </table>
             </div>
-        """)
+        """, parser=lxml.etree.XMLParser(resolve_entities=False))
 
         IrQweb = self.env['ir.qweb'].with_context(is_t_cache_disabled=False)
 
-        result = etree.fromstring(IrQweb._render(view1.id, {'cache_id': 1, 'condition': True, 'value': [1, 2, 3]}))
+        result = etree.fromstring(IrQweb._render(view1.id, {'cache_id': 1, 'condition': True, 'value': [1, 2, 3]}), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, expected_result, 'First rendering (add in cache)')
 
-        result = etree.fromstring(IrQweb._render(view1.id, {'cache_id': 1, 'condition': True, 'value': [10, 20, 30]}))
+        result = etree.fromstring(IrQweb._render(view1.id, {'cache_id': 1, 'condition': True, 'value': [10, 20, 30]}), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, expected_result, 'Next rendering use cache')
 
 
@@ -3069,8 +3070,8 @@ class TestQwebCache(TransactionCase):
                     <tr><td><span>30</span></td></tr>
                 </table>
             </div>
-        """)
-        result = etree.fromstring(IrQweb._render(view1.id, {'cache_id': 1, 'value': [10, 20, 30]}))
+        """, parser=lxml.etree.XMLParser(resolve_entities=False))
+        result = etree.fromstring(IrQweb._render(view1.id, {'cache_id': 1, 'value': [10, 20, 30]}), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, expected_result, 'Next rendering use cache')
 
     def test_render_xml_cache_and_inherit_view(self):
@@ -3111,8 +3112,8 @@ class TestQwebCache(TransactionCase):
                     <tr><td><span>3</span></td></tr>
                 </table>
             </div>
-        """)
-        result = etree.fromstring(IrQweb._render(view2.id, {'value': [1, 2, 3]}))
+        """, parser=lxml.etree.XMLParser(resolve_entities=False))
+        result = etree.fromstring(IrQweb._render(view2.id, {'value': [1, 2, 3]}), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, expected_result, 'First rendering create cache from company and the value 1')
 
         expected_result = etree.fromstring("""
@@ -3123,8 +3124,8 @@ class TestQwebCache(TransactionCase):
                     <tr><td><span>30</span></td></tr>
                 </table>
             </div>
-        """)
-        result = etree.fromstring(IrQweb._render(view2.id, {'value': [10, 20, 30]}))
+        """, parser=lxml.etree.XMLParser(resolve_entities=False))
+        result = etree.fromstring(IrQweb._render(view2.id, {'value': [10, 20, 30]}), parser=lxml.etree.XMLParser(resolve_entities=False))
         self.assertEqual(result, expected_result, 'Next rendering create cache from company and the value 10')
 
     def test_render_nodb(self):

@@ -26,6 +26,7 @@ from odoo.exceptions import UserError, ValidationError
 from odoo.tools import get_lang
 from odoo.tools.float_utils import float_repr, float_round
 from odoo.tools.xml_utils import cleanup_xml_node, validate_xml_from_attachment
+import lxml.etree
 
 
 class AccountEdiFormat(models.Model):
@@ -561,7 +562,7 @@ class AccountEdiFormat(models.Model):
     def _l10n_es_tbai_process_post_response_ar_gi(self, env, response):
         """Government response processing for Araba and Gipuzkoa."""
         try:
-            response_xml = etree.fromstring(response.content)
+            response_xml = etree.fromstring(response.content, parser=lxml.etree.XMLParser(resolve_entities=False))
         except etree.XMLSyntaxError as e:
             return False, e, None
 
@@ -676,7 +677,7 @@ class AccountEdiFormat(models.Model):
         response_xml = None
         if response_data:
             try:
-                response_xml = etree.fromstring(response_data)
+                response_xml = etree.fromstring(response_data, parser=lxml.etree.XMLParser(resolve_entities=False))
             except etree.XMLSyntaxError as e:
                 response_success = False
                 response_messages.append(str(e))

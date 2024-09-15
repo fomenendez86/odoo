@@ -6,6 +6,7 @@ from odoo import Command
 from odoo.addons.l10n_account_edi_ubl_cii_tests.tests.common import TestUBLCommon
 from odoo.addons.account.tests.test_account_move_send import TestAccountMoveSendCommon
 from odoo.tests import tagged
+import lxml.etree
 
 
 @tagged('post_install_l10n', 'post_install', '-at_install')
@@ -542,7 +543,7 @@ class TestUBLBE(TestUBLCommon, TestAccountMoveSendCommon):
                 },
             ],
         )
-        price_amounts = etree.fromstring(invoice.ubl_cii_xml_id.raw).findall('.//{*}InvoiceLine/{*}Price/{*}PriceAmount')
+        price_amounts = etree.fromstring(invoice.ubl_cii_xml_id.raw, parser=lxml.etree.XMLParser(resolve_entities=False)).findall('.//{*}InvoiceLine/{*}Price/{*}PriceAmount')
         self.assertEqual(price_amounts[0].text, '102.15')
         self.assertEqual(price_amounts[1].text, '83.6')
 
