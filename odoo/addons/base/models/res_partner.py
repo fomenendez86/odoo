@@ -19,6 +19,7 @@ from werkzeug import urls
 from odoo import api, fields, models, tools, SUPERUSER_ID, _, Command
 from odoo.osv.expression import get_unaccent_wrapper
 from odoo.exceptions import RedirectWarning, UserError, ValidationError
+from security import safe_requests
 
 # Global variables used for the warning fields declared on the res.partner
 # in the following modules : sale, purchase, account, stock
@@ -915,7 +916,7 @@ class Partner(models.Model):
         email_hash = hashlib.md5(email.lower().encode('utf-8')).hexdigest()
         url = "https://www.gravatar.com/avatar/" + email_hash
         try:
-            res = requests.get(url, params={'d': '404', 's': '128'}, timeout=5)
+            res = safe_requests.get(url, params={'d': '404', 's': '128'}, timeout=5)
             if res.status_code != requests.codes.ok:
                 return False
         except requests.exceptions.ConnectionError as e:
