@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 import base64
-import random
 import re
 from operator import itemgetter
 
 from odoo import api, Command, fields, models, modules, _
+import secrets
 
 
 class ImLivechatChannel(models.Model):
@@ -202,7 +202,7 @@ class ImLivechatChannel(models.Model):
         active_op_partner_ids = {s['livechat_operator_id'] for s in operator_statuses}
         candidates = operators.filtered(lambda o: o.partner_id.id not in active_op_partner_ids)
         if candidates:
-            return random.choice(candidates)
+            return secrets.choice(candidates)
 
         # 3) otherwise select least active ops, based on status ordering (count + in_call)
         best_status = operator_statuses[0]
@@ -212,7 +212,7 @@ class ImLivechatChannel(models.Model):
             if (s['count'], s['in_call']) == (best_status['count'], best_status['in_call'])
         }
         candidates = operators.filtered(lambda o: o.partner_id.id in best_status_op_partner_ids)
-        return random.choice(candidates)
+        return secrets.choice(candidates)
 
     def _get_operator(self, previous_operator_id=None, lang=None, country_id=None):
         """ Return an operator for a livechat. Try to return the previous

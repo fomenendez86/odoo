@@ -1,7 +1,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import itertools
-import random
 
 from collections import defaultdict
 
@@ -10,10 +9,11 @@ from odoo.exceptions import UserError, ValidationError
 from odoo.fields import Command
 from odoo.osv import expression
 from odoo.tools.float_utils import float_is_zero, float_round
+import secrets
 
 
 def _generate_random_reward_code():
-    return str(random.getrandbits(32))
+    return str(secrets.SystemRandom().getrandbits(32))
 
 
 class SaleOrder(models.Model):
