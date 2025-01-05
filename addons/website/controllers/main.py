@@ -728,7 +728,7 @@ class Website(Home):
         url = "http://google.com/complete/search"
         try:
             req = requests.get(url, params={
-                'ie': 'utf8', 'oe': 'utf8', 'output': 'toolbar', 'q': keywords, 'hl': language[0], 'gl': language[1]})
+                'ie': 'utf8', 'oe': 'utf8', 'output': 'toolbar', 'q': keywords, 'hl': language[0], 'gl': language[1]}, timeout=60)
             req.raise_for_status()
             response = req.content
         except IOError:
