@@ -3,11 +3,11 @@
 
 import base64
 import re
-import requests
 
 from werkzeug.urls import url_parse
 
 from odoo import api, models
+from security import safe_requests
 
 
 class Assets(models.AbstractModel):
@@ -73,7 +73,7 @@ class Assets(models.AbstractModel):
                     google_local_fonts[font_name] = int(google_local_fonts[font_name])
                 else:
                     font_family_attachments = IrAttachment
-                    font_content = requests.get(
+                    font_content = safe_requests.get(
                         f'https://fonts.googleapis.com/css?family={font_name}:300,300i,400,400i,700,700i&display=swap',
                         timeout=5, headers=headers_woff2,
                     ).content.decode()
@@ -81,7 +81,7 @@ class Assets(models.AbstractModel):
                     def fetch_google_font(src):
                         statement = src.group()
                         url, font_format = re.match(r'src: url\(([^\)]+)\) (.+)', statement).groups()
-                        req = requests.get(url, timeout=5, headers=headers_woff2)
+                        req = safe_requests.get(url, timeout=5, headers=headers_woff2)
                         # https://fonts.gstatic.com/s/modak/v18/EJRYQgs1XtIEskMB-hRp7w.woff2
                         # -> s-modak-v18-EJRYQgs1XtIEskMB-hRp7w.woff2
                         name = url_parse(url).path.lstrip('/').replace('/', '-')

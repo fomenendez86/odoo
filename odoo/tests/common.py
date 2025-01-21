@@ -29,6 +29,8 @@ import unittest
 import warnings
 from collections import defaultdict, deque
 from concurrent.futures import Future, CancelledError, wait
+from security import safe_requests
+
 try:
     from concurrent.futures import InvalidStateError
 except ImportError:
@@ -1107,7 +1109,7 @@ class ChromeBrowser:
                 message = 'Chrome crashed at startup'
                 break
             try:
-                r = requests.get(url, timeout=3)
+                r = safe_requests.get(url, timeout=3)
                 if r.ok:
                     return r.json()
             except requests.ConnectionError as e:
