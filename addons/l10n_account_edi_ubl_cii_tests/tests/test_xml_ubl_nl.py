@@ -4,6 +4,7 @@ from odoo.tests import tagged
 from odoo import Command
 
 from lxml import etree
+import lxml.etree
 
 
 @tagged('post_install_l10n', 'post_install', '-at_install')
@@ -229,7 +230,7 @@ class TestUBLNL(TestUBLCommon):
                 'tax_ids': [Command.set([self.tax_10_fixed.id, self.tax_7_purchase.id])]
             }]
         )
-        amount = etree.fromstring(invoice.ubl_cii_xml_id.raw).find('.//{*}LegalMonetaryTotal/{*}LineExtensionAmount').text
+        amount = etree.fromstring(invoice.ubl_cii_xml_id.raw, parser=lxml.etree.XMLParser(resolve_entities=False)).find('.//{*}LegalMonetaryTotal/{*}LineExtensionAmount').text
         self.assertEqual(amount, '60.00')
 
     ####################################################

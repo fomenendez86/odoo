@@ -1,5 +1,6 @@
 from lxml import etree
 from odoo.tests.common import TransactionCase
+import lxml.etree
 
 class TestIrQweb(TransactionCase):
     def test_image_field(self):
@@ -16,14 +17,14 @@ class TestIrQweb(TransactionCase):
         })
 
         html = view._render_template(view.id, {"is_raw_image": True, "record": partner})
-        tree = etree.fromstring(html)
+        tree = etree.fromstring(html, parser=lxml.etree.XMLParser(resolve_entities=False))
         img = tree.find("img")
         self.assertTrue(img.get("src").startswith("data:image/png;base64"))
         self.assertEqual(img.get("class"), "img img-fluid")
         self.assertEqual(img.get("alt"), "test image partner")
 
         html = view._render_template(view.id, {"is_raw_image": False, "record": partner})
-        tree = etree.fromstring(html)
+        tree = etree.fromstring(html, parser=lxml.etree.XMLParser(resolve_entities=False))
         img = tree.find("img")
         self.assertTrue(img.get("src").startswith("/web/image"))
         self.assertEqual(img.get("class"), "img img-fluid")
